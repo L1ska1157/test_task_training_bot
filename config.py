@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     DB_NAME: str
     BOT_TOKEN: str
     LOGGING: bool
+    GEMINI_API_KEY: str
 
     @property
     def DATABASE_URL(self):
@@ -34,3 +35,4 @@ def logging_setup():
     )
     
     logging.getLogger("aiogram").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)

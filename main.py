@@ -3,8 +3,14 @@ from aiogram import Bot, Dispatcher
 from bot.handlers import router
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import asyncio
-import logging      
+import logging  
+import sys
+from pathlib import Path
 
+
+root_path = str(Path(__file__).resolve().parent.parent)
+if root_path not in sys.path:
+    sys.path.append(root_path)    
 
 bot = Bot(token=settings.BOT_TOKEN) 
 dp = Dispatcher() 

@@ -18,6 +18,7 @@ stop_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+
 async def history_kb(trainings):
     keyboard = InlineKeyboardBuilder()
     for training in trainings:
@@ -28,12 +29,11 @@ async def history_kb(trainings):
     return keyboard.as_markup()
 
 
-async def progress_kb(user_id: int):
+async def progress_kb(exercises):
     keyboard = InlineKeyboardBuilder()
-    exercises = ['exr1', 'exr2'] # get all trainings from this user
     for exr in exercises:
         keyboard.add(InlineKeyboardButton(
             text=exr,
             callback_data=exr
-            )) # text=exr.name, callback_data=exr.id
+            )) # text=exr.name, callback_data=exr.name
     return keyboard.as_markup()
