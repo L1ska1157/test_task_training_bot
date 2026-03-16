@@ -1,10 +1,13 @@
 from google import genai
+from pydub import AudioSegment
+import speech_recognition as sr
+import io
 import logging
 from config import settings
+from pathlib import Path
 
 
 def format_exercise(exr_text: str): 
-    print(settings.GEMINI_API_KEY)
     client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
     prompt = f'''
@@ -19,7 +22,6 @@ def format_exercise(exr_text: str):
     Повідомлення від користувача: {exr_text}
         '''
     
-    
     response = client.models.generate_content(
         model="gemini-2.5-flash-lite",
         contents=prompt        
@@ -27,4 +29,26 @@ def format_exercise(exr_text: str):
     
     logging.info(f'Format text from {exr_text} to {response.text.strip()}')
     
-    return response.text.strip()
+    return response.text.strip().lower()
+
+
+async def voice_to_text(file_id, bot):
+    file_info = await bot.get_file(file_id)
+
+    oga_buffer = io.BytesIO()
+    await bot.download_file(file_info.file_path, destination=oga_buffer)
+    oga_buffer.seek(0)
+    
+    audio = AudioSegment.from_file(oga_buffer)
+    buffer = io.BytesIO()
+    audio.export(buffer, format="wav")
+    buffer.seek(0)
+    
+    r = sr.Recognizer()
+    with sr.AudioFile(buffer) as source:
+        audio_data = r.record(source)
+        text = r.recognize_google(audio_data, language="uk-UA")
+        
+    return text
+        
+        

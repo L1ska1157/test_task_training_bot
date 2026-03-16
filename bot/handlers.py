@@ -2,13 +2,14 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from aiogram.enums.parse_mode import ParseMode
-from aiogram import F, Router
+from aiogram import F, Router, Bot
 import logging
 import datetime
+from speech_recognition import UnknownValueError, RequestError
 
 from .keyboards import *
 from .states import *
-from .func import format_exercise
+from .func import format_exercise, voice_to_text
 
 router = Router()
 
@@ -87,30 +88,74 @@ async def stop_training(message: Message, state: FSMContext):
 # TODO database.func
 # Text message
 @router.message(F.text, States.training)
-async def text_exercise(message: Message, state: FSMContext):
+async def text_exercise(message: Message):
     logging.info(f'User {message.from_user.username} text \'{message.text}\'')
     
-    exercise = format_exercise(message.text)
-    
-    # TODO add exercise to db
-    await message.answer(
-        text = exercise,
+    temp_message = await message.answer(
+        text='⏳',
         reply_markup=stop_keyboard
     )
 
+    formatted_exr = format_exercise(message.text)
+    
+    if formatted_exr == 'error':
+        await message.answer(
+            text='Вибач, я не зрозумів(',
+            reply_markup=stop_keyboard
+        )
+    else:
+        # TODO add exercise to db
+        await message.answer(
+            text=formatted_exr,
+            reply_markup=stop_keyboard
+        )
 
-# TODO voice message (bot.func or here)
+    await temp_message.delete()
+    
+
+# TODO database.func
 # Voice message
 @router.message(F.voice, States.training)
-async def voice_exercise(message: Message, state: FSMContext):
+async def voice_exercise(message: Message, bot: Bot): 
     logging.info(f'User {message.from_user.username} voice message')
     
-    # TODO voice messages logic
-    # TODO text formating
-    await message.answer(
-        text='Voice message to process',
+    temp_message = await message.answer(
+        text='⏳',
         reply_markup=stop_keyboard
     )
+    
+    try: 
+        audio_text = await voice_to_text(message.voice.file_id, bot)
+    
+    except UnknownValueError:
+        logging.info('Couldn\'t recognise text on this audio')
+        await message.answer(
+            text='Вибач, я не зрозумів що ти сказав(ла)',
+            reply_markup=stop_keyboard
+        )
+    
+    except RequestError as e:
+        logging.error("Could not request results from Google Speech Recognition service; {0}".format(e))
+        await message.answer(
+            text='Ой, щось пішло не так...',
+            reply_markup=stop_keyboard
+        )
+        
+    formatted_exr = format_exercise(audio_text)
+    
+    if formatted_exr == 'error':
+        await message.answer(
+            text='Вибач, я не зрозумів(',
+            reply_markup=stop_keyboard
+        )
+    else:
+        # TODO add exercise to db
+        await message.answer(
+            text=formatted_exr,
+            reply_markup=stop_keyboard
+        )
+        
+    await temp_message.delete()
     
 
 # TODO database.func
