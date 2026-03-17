@@ -11,3 +11,6 @@ ses_factory = sessionmaker(engine)
 class Base(DeclarativeBase):
     pass
     # __repr__ ???
+    
+    
+metadata = Base.metadata

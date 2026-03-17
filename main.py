@@ -6,6 +6,7 @@ import asyncio
 import logging  
 import sys
 from pathlib import Path
+from database.func import create_tables
 
 
 root_path = str(Path(__file__).resolve().parent.parent)
@@ -20,7 +21,7 @@ async def main():
     log = logging.getLogger(__name__) 
     log.info('Running')
     
-    # create_tables()
+    create_tables()
     
     # scheduler = AsyncIOScheduler()
     # scheduler.delete_old_trainings(

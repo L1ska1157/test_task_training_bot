@@ -7,9 +7,10 @@ import logging
 import datetime
 from speech_recognition import UnknownValueError, RequestError
 
-from .keyboards import *
-from .states import *
-from .func import format_exercise, voice_to_text
+from bot.keyboards import *
+from bot.states import *
+from bot.func import format_exercise, voice_to_text
+from database.func import *
 
 router = Router()
 
@@ -47,7 +48,7 @@ async def help(message: Message):
     pass
 
 
-# TODO database.func
+# * Ready
 # 'Старт'
 @router.message(F.text == 'Старт', StateFilter(None))
 async def start_training(message: Message, state: FSMContext):
@@ -55,8 +56,8 @@ async def start_training(message: Message, state: FSMContext):
     
     await state.set_state(States.training)
     
-    # TODO save new training to db, get it's id
-    await state.update_data(start_time = datetime.datetime.now(), training_id = None) #training id from db
+    training_id = add_training(message.from_user.id)
+    await state.update_data(start_time = datetime.datetime.now(), training_id = training_id) 
     
     await message.answer(
         text='Відправте голосове або текстове повідомлення з інформацією про виконану вправу. Щоб завершити тренування натисніть Стоп',
@@ -84,11 +85,10 @@ async def stop_training(message: Message, state: FSMContext):
     )
 
 
-# TODO bot.func
 # TODO database.func
 # Text message
 @router.message(F.text, States.training)
-async def text_exercise(message: Message):
+async def text_exercise(message: Message, state: FSMContext):
     logging.info(f'User {message.from_user.username} text \'{message.text}\'')
     
     temp_message = await message.answer(
@@ -104,9 +104,13 @@ async def text_exercise(message: Message):
             reply_markup=stop_keyboard
         )
     else:
-        # TODO add exercise to db
+        state_data = await state.get_data()
+        add_exercise(
+            training_id = state_data['training_id'],
+            exr_text = formatted_exr
+        )
         await message.answer(
-            text=formatted_exr,
+            text='Вправу додано ✔️',
             reply_markup=stop_keyboard
         )
 
