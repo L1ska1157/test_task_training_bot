@@ -1,6 +1,6 @@
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.enums.parse_mode import ParseMode
 from aiogram import F, Router, Bot
 import logging
@@ -11,14 +11,10 @@ from bot.keyboards import *
 from bot.states import *
 from bot.func import format_exercise, voice_to_text, get_training_info_message
 from database.func import *
-from bot.middleware import CleanupMiddleware
 
 router = Router()
-router.message.middleware(CleanupMiddleware())
-router.callback_query.middleware(CleanupMiddleware())
 
 
-# * Ready
 # /start
 @router.message(Command('start'), ~StateFilter(States.training))
 async def start(message: Message):
@@ -30,7 +26,6 @@ async def start(message: Message):
     )
     
 
-# * Ready
 # /help
 @router.message(Command('help'))
 async def help(message: Message):
@@ -38,12 +33,12 @@ async def help(message: Message):
     
     await message.answer(
         text='''
-• <b>Старт</b> - розпочати тренування. Далі ти можеш надсилати текстовим або голосовим повідомленням яку вправу ти зробив(ла) і я її збережу
-• <b>Стоп</b> - завершить твоє тренування, закріпивши всі додані вправи за цим тренуванням. Також ти побачиш всі вправи, зроблені за це тренування
-• <b>Історія</b> - історія твоїх тренувань за останній місяць. Просто обери дату тренування зі списку і я покажу всі вправи які ти зробив(ла) тоді 
-• <b>Прогрес</b> - статистика по 1 конкретній вправі. Обери вправу зі списку та побачиш свій прогрес у її виконанні за останній місяць
+• <b>Старт</b> - розпочати тренування. Далі ви можете надсилати текстовим або голосовим повідомленням яку вправу ви зробили і я її збережу
+• <b>Стоп</b> - завершити тренування, закріпивши всі додані вправи за цим тренуванням. Також ви побачите всі вправи, зроблені за це тренування
+• <b>Історія</b> - історія ваших тренувань за останній місяць. Просто оберіть дату тренування зі списку і я покажу всі вправи які ви зробили тоді 
+• <b>Прогрес</b> - статистика по 1 конкретній вправі. Оберіть вправу зі списку та побачите свій прогрес у її виконанні за останній місяць
         
-<i>Примітка: будь ласка, вказуй однакову назву для однакових вправ, інакше вони будуть розглядатись як 2 різні вправи</i>
+<i>Примітка: будь ласка, вказуйте однакову назву для однакових вправ, інакше вони будуть розглядатись як 2 різні вправи</i>
         ''',
         parse_mode=ParseMode.HTML,
         reply_markup=base_keyboard
@@ -51,7 +46,6 @@ async def help(message: Message):
     pass
 
 
-# * Ready
 # 'Старт'
 @router.message(F.text == 'Старт', ~StateFilter(States.training))
 async def start_training(message: Message, state: FSMContext):
@@ -68,7 +62,6 @@ async def start_training(message: Message, state: FSMContext):
     )
 
 
-# * Ready
 # 'Стоп'
 @router.message(F.text == 'Стоп', States.training) 
 async def stop_training(message: Message, state: FSMContext):
@@ -98,7 +91,6 @@ async def stop_training(message: Message, state: FSMContext):
     )
 
 
-# * Ready
 # Text message
 @router.message(F.text, States.training)
 async def text_exercise(message: Message, state: FSMContext):
@@ -106,31 +98,36 @@ async def text_exercise(message: Message, state: FSMContext):
     
     temp_message = await message.answer(
         text='⏳',
-        reply_markup=stop_keyboard
+        reply_markup=ReplyKeyboardRemove()
     )
 
-    formatted_exr = format_exercise(message.text)
+    try:
+        formatted_exr = format_exercise(message.text)
+        
+        if formatted_exr == 'error':
+            await message.answer(
+                text='Вибачте, я не зрозумів(',
+                reply_markup=stop_keyboard
+            )
+        else:
+            state_data = await state.get_data()
+            add_exercise(
+                training_id = state_data['training_id'],
+                exr_text = formatted_exr
+            )
+            await message.answer(
+                text='Вправу додано ✔️',
+                reply_markup=stop_keyboard
+        )
+    except:
+        await message.answer(
+            text='Ой, щось пішло не так...',
+            reply_markup=stop_keyboard
+        )
     
-    if formatted_exr == 'error':
-        await message.answer(
-            text='Вибачте, я не зрозумів(',
-            reply_markup=stop_keyboard
-        )
-    else:
-        state_data = await state.get_data()
-        add_exercise(
-            training_id = state_data['training_id'],
-            exr_text = formatted_exr
-        )
-        await message.answer(
-            text='Вправу додано ✔️',
-            reply_markup=stop_keyboard
-        )
-
     await temp_message.delete()
     
 
-# * Ready
 # Voice message
 @router.message(F.voice, States.training)
 async def voice_exercise(message: Message, bot: Bot, state: FSMContext): 
@@ -138,7 +135,7 @@ async def voice_exercise(message: Message, bot: Bot, state: FSMContext):
     
     temp_message = await message.answer(
         text='⏳',
-        reply_markup=stop_keyboard
+        reply_markup=ReplyKeyboardRemove()
     )
     
     try: 
@@ -179,7 +176,6 @@ async def voice_exercise(message: Message, bot: Bot, state: FSMContext):
     await temp_message.delete()
     
 
-# TODO check
 # 'Історія'
 @router.message(F.text == "Історія", ~StateFilter(States.training))
 async def history(message: Message, state: FSMContext):
@@ -190,19 +186,24 @@ async def history(message: Message, state: FSMContext):
     training_dates = get_training_dates(
         user_id = message.from_user.id
     )
-    keyboard = await history_kb(
-        training_dates = training_dates
-    )
-    
-    kb_message = await message.answer(
-        text='Оберіть дату тренування:',
-        reply_markup=keyboard
-    )
-    
-    await state.update_data(kb_message_id=kb_message.message_id)
+    if training_dates:
+        keyboard = await history_kb(
+            training_dates = training_dates
+        )
+        
+        kb_message = await message.answer(
+            text='Оберіть дату тренування:',
+            reply_markup=keyboard
+        )
+        
+        await state.update_data(kb_message_id=kb_message.message_id)
+    else: 
+        await message.answer(
+            text='Ви ще не додали жодного тренування\nЩоб розпочати тренування, натисніть Старт',
+            reply_markup=base_keyboard
+        )
 
 
-# * Ready
 # 'Прогрес'
 @router.message(F.text == "Прогрес", ~StateFilter(States.training))
 async def progress(message: Message, state: FSMContext):
@@ -211,21 +212,44 @@ async def progress(message: Message, state: FSMContext):
     await state.set_state(States.choose_exr)
     
     exercise_names = get_exr_list(message.from_user.id)
-    keyboard = await progress_kb(exercise_names) 
     
-    kb_message = await message.answer(
-        text='Оберіть вправу:',
-        reply_markup=keyboard
+    if exercise_names:
+        keyboard = await progress_kb(exercise_names) 
+    
+        kb_message = await message.answer(
+            text='Оберіть вправу:',
+            reply_markup=keyboard
+        )
+
+        await state.update_data(kb_message_id=kb_message.message_id)
+    
+    else:
+        await message.answer(
+            text='Ви ще не додали жодної вправи\nЩоб розпочати тренування, натисніть Старт',
+            reply_markup=base_keyboard
+        )
+    
+
+# Back
+@router.callback_query(F.data == '<=')
+async def back(callback: CallbackQuery, state: FSMContext):
+    logging.info('Back')
+    
+    await callback.message.edit_reply_markup(None)
+    await state.clear()
+    
+    await callback.message.answer(
+        text = 'Повертаюся...',
+        reply_markup=base_keyboard
     )
 
-    await state.update_data(kb_message_id=kb_message.message_id)
-    
-
-#* Ready
 # Choosed training date
 @router.callback_query(F.data, States.choose_date)
 async def training_from_history(callback: CallbackQuery, state: FSMContext):
     logging.info(f'User {callback.from_user.username} choosed training {callback.data}')
+    
+    await callback.message.edit_reply_markup(None)
+    await state.clear()
     
     training = get_info_about_training(int(callback.data))
     mes = get_training_info_message('', training)
@@ -236,11 +260,13 @@ async def training_from_history(callback: CallbackQuery, state: FSMContext):
     )
     
 
-# * Ready
 # Choosed exercise
 @router.callback_query(F.data, States.choose_exr)
-async def get_progress(callback: CallbackQuery):
+async def get_progress(callback: CallbackQuery, state: FSMContext):
     logging.info(f'User {callback.from_user.username} choosed exercise {callback.data}')
+    
+    await callback.message.edit_reply_markup(None)
+    await state.clear()
     
     exr_name = callback.data
     user_id = callback.from_user.id
@@ -261,14 +287,14 @@ async def get_progress(callback: CallbackQuery):
     ) 
 
 
-# * Ready
 # Message out of training
 @router.message(~StateFilter(States.training)) 
 async def message_out_of_training(message: Message): 
     logging.info('Message out of training')
     
     await message.answer(
-        text='Щоб розпочати тренування, натисніть старт'
+        text='Щоб розпочати тренування, натисніть старт',
+        reply_markup=base_keyboard
     )
 
 

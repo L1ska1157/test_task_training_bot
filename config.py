@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     DB_NAME: str
     BOT_TOKEN: str
     LOGGING: bool
-    GEMINI_API_KEY: str
+    GITHUB_TOKEN: str
 
     @property
     def DATABASE_URL(self):

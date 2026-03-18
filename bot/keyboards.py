@@ -1,4 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
@@ -8,7 +8,8 @@ base_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text='Історія'), KeyboardButton(text='Прогрес')]
     ],
     resize_keyboard=True,
-    input_field_placeholder='Щоб почати тренування, натисніть кнопку старт'
+    input_field_placeholder='Щоб почати тренування, натисніть кнопку старт',
+    one_time_keyboard=True
 )
 
 stop_keyboard = ReplyKeyboardMarkup(
@@ -16,7 +17,8 @@ stop_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text='Стоп')],
     ],
     resize_keyboard=True,
-    input_field_placeholder='Введіть інформацію про виконану вправу'
+    input_field_placeholder='Введіть інформацію про виконану вправу',
+    one_time_keyboard=True
 )
 
 
@@ -27,6 +29,12 @@ async def history_kb(training_dates):
             text=str(date),
             callback_data=str(id)
             ))
+    keyboard.add(
+        InlineKeyboardButton(
+            text = '<=Назад', 
+            callback_data='<='
+        )
+    )
     return keyboard.adjust(1).as_markup()
 
 
@@ -37,4 +45,10 @@ async def progress_kb(exercise_names):
             text=exr,
             callback_data=exr
             ))
+    keyboard.add(
+        InlineKeyboardButton(
+            text = '<=Назад', 
+            callback_data='<='
+        )
+    )
     return keyboard.adjust(1).as_markup()

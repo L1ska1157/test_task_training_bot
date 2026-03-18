@@ -1,34 +1,52 @@
-from google import genai
 from pydub import AudioSegment
 import speech_recognition as sr
 import io
 import logging
 from config import settings
+from openai import OpenAI
 
 
 def format_exercise(exr_text: str): 
-    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    client = OpenAI(
+        base_url="https://models.inference.ai.azure.com",
+        api_key=settings.GITHUB_TOKEN
+    )
 
-    prompt = f'''
-        Ти — парсер тренувальних даних. Твоя єдина задача — проаналізувати вхідне повідомлення та повернути дані у суворо заданому форматі. 
+    base_prompt = f'''
+        Ти — суворий алгоритм парсингу. Твоя єдина функція: витягти дані та повернути їх у форматі Name|reps|sets|weight.
 
-    Правила:
-    1. Знайди у тексті: назву вправи, кількість повторень, кількість підходів та вагу (якщо вказана).
-    2. Якщо дані валідні, поверни рядок у форматі: Назва вправи|повторення|підходи. Якщо вказана вага, додай її: Назва вправи|повторення|підходи|вага.
-    3. Якщо повідомлення незрозуміле (набір символів), бракує інформації про підходи/повторення, або містяться зайві числа, які неможливо логічно класифікувати — поверни рівно одне слово: error.
-    4. Сувора заборона: не пиши жодних додаткових символів, коментарів, пояснень чи форматування (без markdown). Відповідь має складатися лише з одного рядка за шаблоном або слова error.
+ПРАВИЛА ОБРОБКИ ЧИСЕЛ:
+1. Weight (Вага): Знайди число, що стосується ваги (поруч із "кг", "kg", "кіло"). Виведи ТІЛЬКИ ЧИСЛО без літер. Якщо ваги немає — залиш поле порожнім.
+2. Reps та Sets (Повторення та Підходи):
+   - Якщо між двома числами стоять слова  "разів" (і йому подібні) -> ПЕРШЕ число = reps, ДРУГЕ = sets.
+   - Якщо між двома числами стоять символи "по", "х", "*", "×" або слово "підходів" (і йому подібні) -> ПЕРШЕ число = sets, ДРУГЕ = reps.
+   - Якщо знайдено лише одне число (яке не є вагою) -> reps = це число, sets = 1.
+3. Name (Назва): Усе, що не є числом або одиницею виміру ваги.
 
-    Повідомлення від користувача: {exr_text}
+СУВОРІ ОБМЕЖЕННЯ:
+- Тільки цифри для reps, sets та weight. Жодних "кг", "разів", "підходів" у відповіді.
+- Якщо кількість підходів не вказана — підставляй '1'.
+- Жодних коментарів, пояснень чи Markdown. Тільки один рядок або 'error'.
+- Якщо немає назви або reps — поверни 'error'.
+- Вказуй дані ВИКЛЮЧНО у заданому порядку, не навпаки
+
+ПРИКЛАД:
+"жим 60кг 12 по 3" -> жим|3|12|60
         '''
     
-    response = client.models.generate_content(
-        model="gemini-2.5-flash-lite",
-        contents=prompt        
+    response = client.chat.completions.create(
+        messages=[
+            {"role": "system", "content": base_prompt},
+            {"role": "user", "content": exr_text}
+        ],
+        model="gpt-4o-mini",
+        temperature=0
     )
     
-    logging.info(f'Format text from {exr_text} to {response.text.strip()}')
-    
-    return response.text.strip().lower()
+    result = response.choices[0].message.content.lower()
+
+    logging.info(f'Format text from {exr_text} to {result}')
+    return result
 
 
 async def voice_to_text(file_id, bot):
