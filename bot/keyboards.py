@@ -13,27 +13,28 @@ base_keyboard = ReplyKeyboardMarkup(
 
 stop_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text='Стоп')]
+        [KeyboardButton(text='Стоп')],
     ],
-    resize_keyboard=True
+    resize_keyboard=True,
+    input_field_placeholder='Введіть інформацію про виконану вправу'
 )
 
 
-async def history_kb(trainings):
+async def history_kb(training_dates):
     keyboard = InlineKeyboardBuilder()
-    for training in trainings:
+    for date, id in training_dates:
         keyboard.add(InlineKeyboardButton(
-            text=training,
-            callback_data=training
-            )) # text=training.date, callback_data=training.id
-    return keyboard.as_markup()
+            text=str(date),
+            callback_data=str(id)
+            ))
+    return keyboard.adjust(1).as_markup()
 
 
-async def progress_kb(exercises):
+async def progress_kb(exercise_names):
     keyboard = InlineKeyboardBuilder()
-    for exr in exercises:
+    for exr in exercise_names:
         keyboard.add(InlineKeyboardButton(
             text=exr,
             callback_data=exr
-            )) # text=exr.name, callback_data=exr.name
-    return keyboard.as_markup()
+            ))
+    return keyboard.adjust(1).as_markup()

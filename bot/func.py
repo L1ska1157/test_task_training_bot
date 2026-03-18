@@ -4,7 +4,6 @@ import speech_recognition as sr
 import io
 import logging
 from config import settings
-from pathlib import Path
 
 
 def format_exercise(exr_text: str): 
@@ -52,3 +51,14 @@ async def voice_to_text(file_id, bot):
     return text
         
         
+def get_training_info_message(base_mes: str, training_info: dict):
+    duration = training_info['duration']
+    if len(training_info['exercises']) > 0:
+        for exr in training_info['exercises']:
+            base_mes += f'{exr.name}:{f' {exr.weight} кг' if exr.weight else ''} {exr.sets} підх. по {exr.reps} р.\n'
+            # Вправа: вага(якщо є) n підх. по k р.
+        base_mes += f'\nВи тренувалися: {duration.seconds // 3600} год {duration.seconds % 3600 // 60} хв'
+    else: 
+        base_mes += 'Ви не додали жодної вправи під час цього тренування'
+    
+    return base_mes

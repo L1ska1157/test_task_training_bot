@@ -6,7 +6,7 @@ import asyncio
 import logging  
 import sys
 from pathlib import Path
-from database.func import create_tables
+from database.func import create_tables, delete_old_trainings
 
 
 root_path = str(Path(__file__).resolve().parent.parent)
@@ -23,12 +23,16 @@ async def main():
     
     create_tables()
     
-    # scheduler = AsyncIOScheduler()
-    # scheduler.delete_old_trainings(
-        
-    # )
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
+        delete_old_trainings, 
+        trigger='cron', 
+        day_of_week='mon',
+        hour=0, 
+        minute=0
+    )
     
-    # scheduler.start()  
+    scheduler.start()  
     
     dp.include_router(router)
     await dp.start_polling(bot)

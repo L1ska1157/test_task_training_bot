@@ -16,7 +16,7 @@ class Training(Base):
     user: Mapped[int] = mapped_column(BigInteger)
     
     def __repr__(self):
-        return f'<{self.date} -- id: {self.id} from user {self.user}>'
+        return f'<Training {self.date} -- id: {self.id} from user {self.user}>'
     
     
 class Exercise(Base):
@@ -36,4 +36,4 @@ class Exercise(Base):
     )
     
     def __repr__(self):
-        return f'<id: {self.id} -- training: {self.training_id}>'
+        return f'<Exercise id: {self.id} -- training: {self.training_id}>'
