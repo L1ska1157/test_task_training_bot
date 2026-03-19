@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     BOT_TOKEN: str
     LOGGING: bool
     GITHUB_TOKEN: str
+    DROP_BEFORE_START: bool
 
     @property
     def DATABASE_URL(self):

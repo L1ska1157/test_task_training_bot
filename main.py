@@ -3,15 +3,9 @@ from aiogram import Bot, Dispatcher
 from bot.handlers import router
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import asyncio
-import logging  
-import sys
-from pathlib import Path
+import logging
 from database.func import create_tables, delete_old_trainings
-
-
-root_path = str(Path(__file__).resolve().parent.parent)
-if root_path not in sys.path:
-    sys.path.append(root_path)    
+ 
 
 bot = Bot(token=settings.BOT_TOKEN) 
 dp = Dispatcher() 
@@ -34,6 +28,8 @@ async def main():
     
     scheduler.start()  
     
+    if settings.DROP_BEFORE_START:
+        await bot.delete_webhook(drop_pending_updates=True)
     dp.include_router(router)
     await dp.start_polling(bot)
 

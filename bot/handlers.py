@@ -11,8 +11,10 @@ from bot.keyboards import *
 from bot.states import *
 from bot.func import format_exercise, voice_to_text, get_training_info_message
 from database.func import *
+from bot.middleware import MiddlewareSaveExercise
 
 router = Router()
+router.message.middleware(MiddlewareSaveExercise())
 
 
 # /start
@@ -106,23 +108,28 @@ async def text_exercise(message: Message, state: FSMContext):
         
         if formatted_exr == 'error':
             await message.answer(
-                text='Вибачте, я не зрозумів(',
-                reply_markup=stop_keyboard
+                text='Вибачте, я не зрозумів('
             )
         else:
-            state_data = await state.get_data()
-            add_exercise(
-                training_id = state_data['training_id'],
+            exr_list = formatted_exr.split('|')
+            await message.answer(
+                text = 'Вправу додано ✔️',
+                reply_markup=stop_keyboard
+            )
+            exr_saved_message = await message.answer(
+                text=f'{exr_list[0]}:{f' {exr_list[3]} кг' if exr_list[3] else ''} {exr_list[2]} підх. по {exr_list[1]} р.',
+                reply_markup=change_exr_kb
+            )
+            
+            await state.update_data(
+                exr_saved_message = exr_saved_message,
                 exr_text = formatted_exr
             )
-            await message.answer(
-                text='Вправу додано ✔️',
-                reply_markup=stop_keyboard
-        )
-    except:
+            
+    except Exception as e:
+        logging.error(e)
         await message.answer(
-            text='Ой, щось пішло не так...',
-            reply_markup=stop_keyboard
+            text='Ой, щось пішло не так...'
         )
     
     await temp_message.delete()
@@ -163,17 +170,51 @@ async def voice_exercise(message: Message, bot: Bot, state: FSMContext):
             reply_markup=stop_keyboard
         )
     else:
-        data = await state.get_data()
-        add_exercise(
-            training_id = data['training_id'],
-            exr_text = formatted_exr
-        )
+        exr_list = formatted_exr.split('|')
         await message.answer(
-            text='Вправу додано ✔️',
+            text = 'Вправу додано ✔️',
             reply_markup=stop_keyboard
+        )
+        exr_saved_message = await message.answer(
+            text=f'{exr_list[0]}:{f' {exr_list[3]} кг' if exr_list[3] else ''} {exr_list[2]} підх. по {exr_list[1]} р.',
+            reply_markup=change_exr_kb
+        )
+        
+        await state.update_data(
+            exr_saved_message = exr_saved_message,
+            exr_text = formatted_exr
         )
         
     await temp_message.delete()
+    
+
+# Unavaliable type
+@router.message(States.training)
+async def wrong_data_type(message: Message):
+    logging.info('Wrong data type')
+    await message.answer(
+        text = 'Я розумію лише текстові та голосові повідомлення'
+    )
+
+
+# Change exercise
+@router.callback_query(F.data == 'CHANGE', States.training)
+async def wrong_exercise(callback: CallbackQuery, state: FSMContext):
+    logging.info('Wrong message parcing. User tries again')
+    
+    state_data = await state.get_data()
+    exr_saved_message = state_data['exr_saved_message']
+    
+    await state.update_data(
+        exr_saved_message = None,
+        exr_text = None
+        )
+    
+    await exr_saved_message.edit_reply_markup(None)
+    
+    await callback.message.answer(
+        text = 'Спробуйте ввести інформацію про вправу ще раз. Якщо ви надсилали голосове, спробуйте ввести текстом, повторити чіткіше або затримати голосове на пів секунди після того як ви закінчили говорити'
+    )
     
 
 # 'Історія'
@@ -285,6 +326,18 @@ async def get_progress(callback: CallbackQuery, state: FSMContext):
         text = mes,
         reply_markup=base_keyboard
     ) 
+
+
+# Message while choosing date or exercise
+@router.message(StateFilter(States.choose_date, States.choose_exr))
+async def message_while_choosing(message: Message, state: FSMContext):
+    logging.info('Message while choosing date/exercise')
+    cur_state = await state.get_state()
+    item = 'тренування' if cur_state == States.choose_date.state else 'вправу'
+    await message.answer(
+        text = f'Будь ласка, оберіть {item} зі списку вище або натисніть Назад щоб повернутися'
+    )
+
 
 
 # Message out of training

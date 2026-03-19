@@ -1,4 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
@@ -17,8 +17,17 @@ stop_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text='Стоп')],
     ],
     resize_keyboard=True,
-    input_field_placeholder='Введіть інформацію про виконану вправу',
-    one_time_keyboard=True
+    input_field_placeholder='Введіть інформацію про виконану вправу'
+)
+
+
+change_exr_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(
+            text = 'Змінити',
+            callback_data='CHANGE'
+        )]
+    ]
 )
 
 
